@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blowable Birthday Cake</title>
+    <style>
+        canvas {
+            border: 1px solid black;
+            display: block;
+            margin: 0 auto;
+        }
+        .message {
+            text-align: center;
+            font-size: 20px;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="cakeCanvas" width="500" height="500"></canvas>
+    <div class="message" id="message">Blow out the candles!</div>
+
+    <script>
+        const canvas = document.getElementById('cakeCanvas');
+        const ctx = canvas.getContext('2d');
+        const message = document.getElementById('message');
+
+        // Draw a simple birthday cake with candles
+        function drawCake() {
+            // Draw the cake base
+            ctx.fillStyle = '#D2691E';
+            ctx.fillRect(150, 300, 200, 100);
+
+            // Draw candles
+            ctx.fillStyle = '#FFD700';
+            for (let i = 0; i < 5; i++) {
+                ctx.fillRect(180 + i * 40, 250, 10, 50);
+                ctx.fillStyle = 'red';
+                ctx.beginPath();
+                ctx.arc(185 + i * 40, 240, 10, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = '#FFD700';
+            }
+        }
+
+        // Initialize cake drawing
+        drawCake();
+
+        // Web Audio API to capture microphone input
+        navigator.mediaDevices.getUserMedia({ audio: true })
+            .then(stream => {
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const microphone = audioContext.createMediaStreamSource(stream);
+                const analyser = audioContext.createAnalyser();
+
+                microphone.connect(analyser);
+                analyser.fftSize = 256;
+
+                const dataArray = new Uint8Array(analyser.frequencyBinCount);
+
+                function detectBlow() {
+                    analyser.getByteTimeDomainData(dataArray);
+                    let maxVal = 0;
+
+                    for (let i = 0; i < dataArray.length; i++) {
+                        if (dataArray[i] > maxVal) {
+                            maxVal = dataArray[i];
+                        }
+                    }
+
+                    if (maxVal > 200) { // Adjust threshold as needed
+                        message.textContent = 'You blew out the candles!';
+                        ctx.clearRect(0, 0, canvas.width, canvas.height);
+                        ctx.fillStyle = '#D2691E';
+                        ctx.fillRect(150, 300, 200, 100); // Draw cake without candles
+                    } else {
+                        requestAnimationFrame(detectBlow);
+                    }
+                }
+
+                detectBlow();
+            })
+            .catch(err => {
+                console.error('Error accessing microphone', err);
+                message.textContent = 'Could not access microphone.';
+            });
+    </script>
+</body>
+</html>
